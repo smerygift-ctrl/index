@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>MathPath</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0f1e;
+    --surface:#131b30;
+    --surface-2:#1b2540;
+    --surface-3:#232f52;
+    --grid-line:rgba(94,234,212,0.07);
+    --grid-line-strong:rgba(94,234,212,0.16);
+    --text:#eaf0fa;
+    --text-dim:#8291b3;
+    --text-faint:#4d5b7f;
+    --teal:#5eead4;
+    --amber:#fbbf24;
+    --coral:#fb7185;
+    --violet:#a78bfa;
+    --radius:18px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse 700px 500px at 20% -10%, rgba(167,139,250,0.10), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 100% 100%, rgba(94,234,212,0.08), transparent 60%),
+      var(--bg);
+    font-family:'Inter',sans-serif;
+    color:var(--text);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    padding:24px 12px;
+  }
+  .device{
+    width:400px;
+    height:840px;
+    max-height:94vh;
+    background:var(--surface);
+    border-radius:44px;
+    border:1px solid #232f52;
+    box-shadow:0 40px 90px -30px rgba(0,0,0,0.7), 0 0 0 8px #05070f, 0 0 0 9px #262f4a;
+    overflow:hidden;
+    position:relative;
+    display:flex;
+    flex-direction:column;
+  }
+  .grid-texture{
+    position:absolute; inset:0;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size:28px 28px;
+    pointer-events:none;
+    z-index:0;
+    opacity:0.6;
+  }
+  .statusbar{
+    height:30px; flex:0 0 auto;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 26px; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text-dim);
+    position:relative; z-index:5;
+  }
+  .screens{ flex:1; position:relative; overflow:hidden; z-index:1;}
+  .screen{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column;
+    opacity:0; pointer-events:none;
+    transform:translateY(8px);
+    transition:opacity .28s ease, transform .28s ease;
+    overflow-y:auto;
+  }
+  .screen.active{ opacity:1; pointer-events:auto; transform:translateY(0); }
+  .screen::-webkit-scrollbar{width:0;}
+
+  h1,h2,h3,.display{font-family:'Space Grotesk',sans-serif; margin:0;}
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--teal); margin:0 0 6px;
+  }
+  p{color:var(--text-dim); line-height:1.55; margin:0;}
+  button{font-family:inherit; cursor:pointer;}
+
+  /* ---------- SPLASH ---------- */
+  #splash{ align-items:center; justify-content:center; text-align:center; gap:18px;}
+  .splash-mark{
+    width:96px; height:96px; position:relative;
+  }
+  .splash-mark svg{width:100%; height:100%;}
+  .splash-title{font-size:30px; font-weight:700; letter-spacing:-0.02em;}
+  .splash-title span{color:var(--teal);}
+  .splash-sub{font-size:13px; color:var(--text-faint); font-family:'JetBrains Mono',monospace;}
+  .splash-dots{display:flex; gap:6px; margin-top:10px;}
+  .splash-dots i{width:6px; height:6px; border-radius:50%; background:var(--text-faint); animation:pulse 1.2s infinite ease-in-out;}
+  .splash-dots i:nth-child(2){animation-delay:.15s;}
+  .splash-dots i:nth-child(3){animation-delay:.3s;}
+  @keyframes pulse{0%,80%,100%{opacity:.25; transform:scale(.8);} 40%{opacity:1; background:var(--teal); transform:scale(1);}}
+
+  /* ---------- ONBOARDING ---------- */
+  #onboarding{padding:44px 30px 30px; align-items:stretch;}
+  .ob-skip{align-self:flex-end; background:none; border:none; color:var(--text-faint); font-size:13px;}
+  .ob-slide{flex:1; display:none; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:18px;}
+  .ob-slide.active{display:flex;}
+  .ob-icon{width:110px; height:110px;}
+  .ob-slide h2{font-size:24px; letter-spacing:-0.02em;}
+  .ob-slide p{max-width:260px; font-size:14.5px;}
+  .ob-dots{display:flex; justify-content:center; gap:8px; margin:18px 0 22px;}
+  .ob-dots i{width:7px; height:7px; border-radius:50%; background:var(--surface-3); transition:.2s;}
+  .ob-dots i.on{width:20px; border-radius:4px; background:var(--teal);}
+  .btn-primary{
+    background:linear-gradient(135deg, var(--teal), #34d0b8);
+    color:#052a24; border:none; padding:15px; border-radius:14px;
+    font-weight:700; font-size:15px; letter-spacing:-0.01em;
+  }
+  .btn-primary:active{transform:scale(.98);}
+
+  /* ---------- AUTH ---------- */
+  #auth{padding:40px 28px 28px;}
+  .auth-tabs{display:flex; background:var(--surface-2); border-radius:14px; padding:4px; margin-bottom:26px;}
+  .auth-tab{flex:1; text-align:center; padding:10px; border:none; background:none; color:var(--text-dim); font-weight:600; font-size:13.5px; border-radius:10px;}
+  .auth-tab.on{background:var(--surface-3); color:var(--text);}
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:12px; color:var(--text-faint); margin-bottom:6px; font-family:'JetBrains Mono',monospace;}
+  .field input{
+    width:100%; background:var(--surface-2); border:1px solid var(--surface-3); color:var(--text);
+    padding:13px 14px; border-radius:12px; font-size:14px; outline:none;
+  }
+  .field input:focus{border-color:var(--teal);}
+  .auth-note{text-align:center; font-size:12px; margin-top:16px;}
+  .auth-note a{color:var(--teal); cursor:pointer;}
+
+  /* ---------- APP CHROME (post-login) ---------- */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:20px 22px 6px; flex:0 0 auto; position:relative; z-index:2;
+  }
+  .greet .eyebrow{margin-bottom:2px;}
+  .greet h2{font-size:20px;}
+  .streak{
+    display:flex; align-items:center; gap:6px; background:var(--surface-2);
+    border:1px solid var(--surface-3); padding:7px 12px; border-radius:100px; font-size:13px; font-weight:600;
+  }
+  .streak b{color:var(--amber);}
+
+  .content-pad{padding:14px 22px 100px;}
+
+  /* dashboard cards laid out like plotted coordinates */
+  .coord-label{font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--text-faint); margin-bottom:8px;}
+  .card-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:22px;}
+  .feature-card{
+    background:var(--surface-2); border:1px solid var(--surface-3); border-radius:var(--radius);
+    padding:16px; display:flex; flex-direction:column; gap:10px; min-height:118px; text-align:left;
+    position:relative; overflow:hidden;
+  }
+  .feature-card:active{transform:scale(.97);}
+  .feature-card .fi{width:26px; height:26px;}
+  .feature-card b{font-family:'Space Grotesk',sans-serif; font-size:14.5px; font-weight:600;}
+  .feature-card small{color:var(--text-faint); font-size:11px; font-family:'JetBrains Mono',monospace;}
+  .fc-1{color:var(--teal);} .fc-2{color:var(--amber);} .fc-3{color:var(--violet);} .fc-4{color:var(--coral);}
+
+  .section-title{display:flex; align-items:center; justify-content:space-between; margin:8px 0 12px;}
+  .section-title h3{font-size:15px;}
+  .section-title span{font-size:12px; color:var(--teal);}
+
+  .stat-row{display:flex; gap:10px; margin-bottom:20px;}
+  .stat{flex:1; background:var(--surface-2); border:1px solid var(--surface-3); border-radius:14px; padding:12px; text-align:center;}
+  .stat b{display:block; font-family:'Space Grotesk'; font-size:19px;}
+  .stat span{font-size:10.5px; color:var(--text-faint); font-family:'JetBrains Mono',monospace;}
+
+  .bottom-nav{
+    position:absolute; bottom:0; left:0; right:0; z-index:6;
+    display:flex; justify-content:space-around; align-items:center;
+    padding:10px 6px calc(14px + env(safe-area-inset-bottom));
+    background:rgba(19,27,48,0.88); backdrop-filter:blur(10px);
+    border-top:1px solid var(--surface-3);
+  }
+  .nav-btn{background:none; border:none; display:flex; flex-direction:column; align-items:center; gap:4px; color:var(--text-faint); font-size:10px; font-family:'JetBrains Mono',monospace; padding:4px 8px;}
+  .nav-btn svg{width:21px; height:21px;}
+  .nav-btn.on{color:var(--teal);}
+
+  /* list rows (lessons) */
+  .row-item{
+    display:flex; align-items:center; gap:12px; background:var(--surface-2); border:1px solid var(--surface-3);
+    border-radius:14px; padding:12px 14px; margin-bottom:10px; text-align:left; width:100%;
+  }
+  .row-item .ri-icon{width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex:0 0 auto;}
+  .row-item .ri-body{flex:1; min-width:0;}
+  .row-item b{display:block; font-size:13.5px; font-weight:600;}
+  .row-item small{font-size:11px; color:var(--text-faint); font-family:'JetBrains Mono',monospace;}
+  .chip{font-size:10px; padding:2px 8px; border-radius:100px; font-family:'JetBrains Mono',monospace; flex:0 0 auto;}
+
+  .back-row{display:flex; align-items:center; gap:10px; padding:16px 22px 4px;}
+  .icon-btn{width:34px; height:34px; border-radius:10px; background:var(--surface-2); border:1px solid var(--surface-3); display:flex; align-items:center; justify-content:center; color:var(--text);}
+  .icon-btn svg{width:16px; height:16px;}
+
+  /* video player mock */
+  .player{background:#000; border-radius:16px; aspect-ratio:16/10; position:relative; overflow:hidden; margin-bottom:16px; display:flex; align-items:center; justify-content:center;}
+  .player svg{width:52px; height:52px; color:var(--teal); opacity:.9;}
+  .player .pbar{position:absolute; bottom:0; left:0; height:3px; background:var(--teal); width:0%; transition:width linear;}
+
+  /* homework scanner */
+  .scan-zone{
+    border:2px dashed var(--surface-3); border-radius:20px; padding:34px 20px; text-align:center;
+    display:flex; flex-direction:column; align-items:center; gap:12px; margin-bottom:18px;
+  }
+  .scan-zone.scanning{border-color:var(--teal);}
+  .scan-ring{width:64px; height:64px; position:relative;}
+  .scan-ring svg{width:100%; height:100%;}
+  .solution-block{background:var(--surface-2); border:1px solid var(--surface-3); border-radius:16px; padding:16px; margin-bottom:12px;}
+  .solution-block .eyebrow{margin-bottom:10px;}
+  .step-line{display:flex; gap:10px; margin-bottom:10px; font-family:'JetBrains Mono',monospace; font-size:13px;}
+  .step-num{width:20px; height:20px; border-radius:6px; background:var(--surface-3); color:var(--teal); display:flex; align-items:center; justify-content:center; font-size:10px; flex:0 0 auto;}
+
+  /* graph grid */
+  #graphCanvas{width:100%; aspect-ratio:1/1; background:var(--surface-2); border-radius:16px; border:1px solid var(--surface-3); touch-action:none;}
+  .graph-controls{display:flex; gap:8px; margin:14px 0;}
+  .graph-controls input{flex:1; background:var(--surface-2); border:1px solid var(--surface-3); color:var(--text); padding:11px 12px; border-radius:12px; font-family:'JetBrains Mono',monospace; font-size:13px;}
+  .btn-sm{background:var(--surface-3); border:none; color:var(--text); padding:11px 16px; border-radius:12px; font-size:12.5px; font-weight:600;}
+  .coord-readout{font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--teal); text-align:center; margin-bottom:10px; min-height:16px;}
+
+  /* tutor chat */
+  .chat-scroll{flex:1; display:flex; flex-direction:column; gap:10px; padding-bottom:10px;}
+  .bubble{max-width:78%; padding:11px 14px; border-radius:16px; font-size:13.5px; line-height:1.5;}
+  .bubble.me{align-self:flex-end; background:linear-gradient(135deg,var(--teal),#34d0b8); color:#052a24; border-bottom-right-radius:4px; font-weight:500;}
+  .bubble.ai{align-self:flex-start; background:var(--surface-2); border:1px solid var(--surface-3); border-bottom-left-radius:4px;}
+  .typing{align-self:flex-start; display:flex; gap:4px; padding:12px 14px; background:var(--surface-2); border-radius:16px; border-bottom-left-radius:4px;}
+  .typing i{width:6px; height:6px; background:var(--text-faint); border-radius:50%; animation:pulse 1s infinite;}
+  .chat-input-row{display:flex; gap:8px; padding:12px 22px calc(16px + env(safe-area-inset-bottom)); border-top:1px solid var(--surface-3); background:var(--surface);}
+  .chat-input-row input{flex:1; background:var(--surface-2); border:1px solid var(--surface-3); color:var(--text); padding:12px 14px; border-radius:100px; font-size:13.5px; outline:none;}
+  .chat-input-row input:focus{border-color:var(--teal);}
+  .send-btn{width:42px; height:42px; border-radius:50%; background:var(--teal); border:none; display:flex; align-items:center; justify-content:center; flex:0 0 auto;}
+  .send-btn svg{width:18px; height:18px; color:#052a24;}
+
+  /* quiz */
+  .quiz-progress{height:5px; background:var(--surface-3); border-radius:3px; overflow:hidden; margin-bottom:20px;}
+  .quiz-progress i{display:block; height:100%; background:var(--teal); transition:width .3s;}
+  .quiz-q{font-size:19px; font-weight:600; font-family:'Space Grotesk'; margin-bottom:20px; line-height:1.4;}
+  .opt{
+    display:block; width:100%; text-align:left; background:var(--surface-2); border:1px solid var(--surface-3);
+    color:var(--text); padding:14px 16px; border-radius:14px; margin-bottom:10px; font-size:14px;
+  }
+  .opt.correct{border-color:var(--teal); background:rgba(94,234,212,0.12); color:var(--teal);}
+  .opt.wrong{border-color:var(--coral); background:rgba(251,113,133,0.12); color:var(--coral);}
+
+  /* achievements */
+  .badge-grid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;}
+  .badge{
+    aspect-ratio:1; background:var(--surface-2); border:1px solid var(--surface-3); border-radius:16px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:8px; text-align:center;
+  }
+  .badge.locked{opacity:.35;}
+  .badge .glyph{font-family:'Space Grotesk'; font-size:22px; font-weight:700; color:var(--amber);}
+  .badge span{font-size:9.5px; color:var(--text-dim); font-family:'JetBrains Mono',monospace; line-height:1.3;}
+
+  /* settings / profile */
+  .toggle-row{display:flex; align-items:center; justify-content:space-between; padding:14px 0; border-bottom:1px solid var(--surface-3);}
+  .toggle-row b{font-size:13.5px; font-weight:500;}
+  .switch{width:42px; height:24px; border-radius:100px; background:var(--surface-3); position:relative; border:none; flex:0 0 auto;}
+  .switch.on{background:var(--teal);}
+  .switch i{position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:50%; background:#fff; transition:.2s;}
+  .switch.on i{left:21px;}
+
+  .profile-card{display:flex; align-items:center; gap:14px; background:var(--surface-2); border:1px solid var(--surface-3); border-radius:16px; padding:16px; margin-bottom:20px;}
+  .avatar{width:54px; height:54px; border-radius:16px; background:linear-gradient(135deg,var(--violet),var(--teal)); display:flex; align-items:center; justify-content:center; font-family:'Space Grotesk'; font-weight:700; font-size:19px; color:#0a0f1e;}
+
+  .link-row{width:100%; text-align:left; background:none; border:none; color:var(--text); padding:13px 0; border-bottom:1px solid var(--surface-3); display:flex; justify-content:space-between; align-items:center; font-size:13.5px;}
+  .link-row span{color:var(--text-faint);}
+
+  /* teacher dashboard */
+  .student-row{display:flex; align-items:center; gap:10px; background:var(--surface-2); border:1px solid var(--surface-3); border-radius:14px; padding:12px; margin-bottom:9px;}
+  .mini-bar{flex:1; height:6px; background:var(--surface-3); border-radius:3px; overflow:hidden;}
+  .mini-bar i{display:block; height:100%; background:var(--amber);}
+
+  .toast{
+    position:absolute; left:50%; bottom:96px; transform:translateX(-50%) translateY(20px);
+    background:var(--surface-3); border:1px solid #2c396a; padding:10px 18px; border-radius:100px;
+    font-size:12.5px; font-weight:600; opacity:0; transition:.25s; z-index:20; white-space:nowrap;
+    display:flex; align-items:center; gap:8px;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  ::selection{background:var(--teal); color:#052a24;}
+  @media (max-width:440px){ .device{width:100%; height:100vh; max-height:100vh; border-radius:0; border:none; box-shadow:none;} }
+</style>
+</head>
+<body>
+
+<div class="device">
+  <div class="grid-texture"></div>
+
+  <div class="statusbar">
+    <span id="clock">9:41</span>
+    <span style="color:var(--teal)">MATHPATH</span>
+  </div>
+
+  <div class="screens">
+
+    <!-- SPLASH -->
+    <section class="screen active" id="splash">
+      <div class="splash-mark">
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="50" cy="50" r="46" stroke="#232f52" stroke-width="2"/>
+          <path d="M50 4V96M4 50H96" stroke="#232f52" stroke-width="1"/>
+          <circle cx="26" cy="66" r="4" fill="#a78bfa"/>
+          <circle cx="70" cy="30" r="4" fill="#fbbf24"/>
+          <path d="M26 66 L70 30" stroke="#5eead4" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <h1 class="splash-title">Math<span>Path</span></h1>
+      <p class="splash-sub">y = learning(x)</p>
+      <div class="splash-dots"><i></i><i></i><i></i></div>
+    </section>
+
+    <!-- ONBOARDING -->
+    <section class="screen" id="onboarding">
+      <button class="ob-skip" onclick="goAuth()">Skip</button>
+      <div class="ob-slide active" data-i="0">
+        <svg class="ob-icon" viewBox="0 0 100 100" fill="none"><rect x="10" y="10" width="80" height="80" rx="14" stroke="#5eead4" stroke-width="2"/><path d="M10 36H90M10 62H90M36 10V90M62 10V90" stroke="#232f52" stroke-width="1.5"/><circle cx="36" cy="36" r="5" fill="#fbbf24"/><circle cx="62" cy="62" r="5" fill="#a78bfa"/><path d="M36 36L62 62" stroke="#fb7185" stroke-width="2"/></svg>
+        <h2>See math on a grid</h2>
+        <p>Plot points, draw functions, and watch equations come to life on an interactive coordinate grid.</p>
+      </div>
+      <div class="ob-slide" data-i="1">
+        <svg class="ob-icon" viewBox="0 0 100 100" fill="none"><rect x="18" y="14" width="64" height="72" rx="10" stroke="#fbbf24" stroke-width="2"/><path d="M30 34h40M30 48h40M30 62h24" stroke="#232f52" stroke-width="2"/><circle cx="72" cy="70" r="16" fill="#0a0f1e" stroke="#5eead4" stroke-width="2"/><path d="M66 70l4 4 8-8" stroke="#5eead4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <h2>Scan your homework</h2>
+        <p>Snap a photo of any problem and get a full AI walkthrough &mdash; not just the answer.</p>
+      </div>
+      <div class="ob-slide" data-i="2">
+        <svg class="ob-icon" viewBox="0 0 100 100" fill="none"><circle cx="50" cy="42" r="26" stroke="#a78bfa" stroke-width="2"/><path d="M38 42a12 12 0 0 1 12-12" stroke="#5eead4" stroke-width="2" stroke-linecap="round"/><path d="M30 78c4-10 12-14 20-14s16 4 20 14" stroke="#232f52" stroke-width="2" stroke-linecap="round"/></svg>
+        <h2>Your own AI tutor</h2>
+        <p>Ask questions any time. It explains, encourages, and adjusts to how you learn best.</p>
+      </div>
+      <div class="ob-dots"><i class="on"></i><i></i><i></i></div>
+      <button class="btn-primary" id="obNext" onclick="obAdvance()">Continue</button>
+    </section>
+
+    <!-- AUTH -->
+    <section class="screen" id="auth">
+      <div class="eyebrow">Step 01 &middot; Access</div>
+      <h2 style="font-size:24px; margin-bottom:22px;">Let's get you set up</h2>
+      <div class="auth-tabs">
+        <button class="auth-tab on" id="tabLogin" onclick="setAuthTab('login')">Log in</button>
+        <button class="auth-tab" id="tabRegister" onclick="setAuthTab('register')">Register</button>
+      </div>
+      <div id="registerFields" style="display:none;">
+        <div class="field"><label>Full name</label><input id="regName" type="text" placeholder="Alex Rivera"></div>
+      </div>
+      <div class="field"><label>Email</label><input id="authEmail" type="email" placeholder="you@school.edu"></div>
+      <div class="field"><label>Password</label><input id="authPass" type="password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"></div>
+      <button class="btn-primary" style="width:100%; margin-top:8px;" onclick="doAuth()">Enter MathPath</button>
+      <div class="auth-note">By continuing you agree to learn a few new things.</div>
+    </section>
+
+    <!-- DASHBOARD -->
+    <section class="screen" id="dashboard">
+      <div class="topbar">
+        <div class="greet"><div class="eyebrow">Welcome back</div><h2 id="dashName">Alex</h2></div>
+        <div class="streak">🔥 <b id="streakCount">6</b> day streak</div>
+      </div>
+      <div class="content-pad">
+        <div class="coord-label">// choose a path (x, y)</div>
+        <div class="card-grid">
+          <button class="feature-card" onclick="go('learn')">
+            <svg class="fi fc-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/></svg>
+            <b>Learn Videos</b><small>(1, 1) &middot; 12 lessons</small>
+          </button>
+          <button class="feature-card" onclick="go('homework')">
+            <svg class="fi fc-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 8V6a2 2 0 0 1 2-2h2M20 8V6a2 2 0 0 1-2-2h-2M4 16v2a2 2 0 0 0 2 2h2M20 16v2a2 2 0 0 1-2 2h-2"/><circle cx="12" cy="12" r="4"/></svg>
+            <b>Homework AI</b><small>(2, 1) &middot; scan &amp; solve</small>
+          </button>
+          <button class="feature-card" onclick="go('graph')">
+            <svg class="fi fc-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 21V3M3 21H21"/><circle cx="9" cy="14" r="1.6" fill="currentColor" stroke="none"/><circle cx="14" cy="8" r="1.6" fill="currentColor" stroke="none"/><path d="M9 14L14 8"/></svg>
+            <b>Graph Grid</b><small>(1, 2) &middot; plot &amp; explore</small>
+          </button>
+          <button class="feature-card" onclick="go('tutor')">
+            <svg class="fi fc-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 4h16v11H8l-4 4z"/></svg>
+            <b>AI Tutor</b><small>(2, 2) &middot; ask anything</small>
+          </button>
+        </div>
+
+        <div class="section-title"><h3>This week</h3><span onclick="go('progress')">View all &rarr;</span></div>
+        <div class="stat-row">
+          <div class="stat"><b>84%</b><span>ACCURACY</span></div>
+          <div class="stat"><b>420</b><span>XP EARNED</span></div>
+          <div class="stat"><b>7</b><span>PRACTICES</span></div>
+        </div>
+
+        <div class="section-title"><h3>Jump back in</h3></div>
+        <button class="row-item" onclick="go('quiz')">
+          <div class="ri-icon" style="background:rgba(94,234,212,0.12);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5eead4" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          </div>
+          <div class="ri-body"><b>Practice: Linear Equations</b><small>10 questions &middot; adaptive</small></div>
+          <div class="chip" style="background:rgba(94,234,212,0.14); color:var(--teal);">Start</div>
+        </button>
+      </div>
+    </section>
+
+    <!-- LEARN VIDEOS -->
+    <section class="screen" id="learn">
+      <div class="back-row"><button class="icon-btn" onclick="go('dashboard')">←</button><h3>Learn Videos</h3></div>
+      <div class="content-pad" style="padding-top:8px;">
+        <div class="coord-label">// tutorials by topic</div>
+        <div id="lessonList"></div>
+      </div>
+    </section>
+
+    <!-- LESSON DETAIL -->
+    <section class="screen" id="lessonDetail">
+      <div class="back-row"><button class="icon-btn" onclick="go('learn')">←</button><h3 id="lessonTitle">Lesson</h3></div>
+      <div class="content-pad" style="padding-top:8px;">
+        <div class="player" id="player" onclick="togglePlay()">
+          <svg id="playIcon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          <div class="pbar" id="pbar"></div>
+        </div>
+        <div class="eyebrow">Tutorial</div>
+        <p id="lessonBody" style="margin-bottom:20px;"></p>
+        <button class="btn-primary" style="width:100%;" onclick="completeLesson()">Mark complete</button>
+      </div>
+    </section>
+
+    <!-- HOMEWORK AI -->
+    <section class="screen" id="homework">
+      <div class="back-row"><button class="icon-btn" onclick="go('dashboard')">←</button><h3>Homework AI</h3></div>
+      <div class="content-pad" style="padding-top:8px;">
+        <div class="scan-zone" id="scanZone">
+          <div class="scan-ring">
+            <svg viewBox="0 0 64 64" fill="none"><rect x="10" y="10" width="44" height="44" rx="8" stroke="#5eead4" stroke-width="2"/><path d="M10 22V14a4 4 0 0 1 4-4h8M54 22V14a4 4 0 0 0-4-4h-8M10 42v8a4 4 0 0 0 4 4h8M54 42v8a4 4 0 0 1-4 4h-8" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round"/></svg>
+          </div>
+          <b id="scanLabel" style="font-size:14px;">Scan a homework problem</b>
+          <p style="font-size:12.5px;">Line up the equation inside the frame</p>
+          <button class="btn-primary" id="scanBtn" onclick="startScan()">Open scanner</button>
+        </div>
+        <div id="solutionArea"></div>
+      </div>
+    </section>
+
+    <!-- GRAPH GRID -->
+    <section class="screen" id="graph">
+      <div class="back-row"><button class="icon-btn" onclick="go('dashboard')">←</button><h3>Graph Grid</h3></div>
+      <div class="content-pad" style="padding-top:8px;">
+        <div class="coord-readout" id="coordReadout">Tap the grid to plot a point</div>
+        <canvas id="graphCanvas" width="600" height="600"></canvas>
+        <div class="graph-controls">
+          <input id="funcInput" type="text" placeholder="y = 0.5x + 1" value="y = 0.5x + 1">
+          <button class="btn-sm" onclick="drawFunction()">Plot</button>
+        </div>
+        <button class="btn-sm" style="width:100%; margin-bottom:16px;" onclick="clearGraph()">Clear grid</button>
+        <button class="btn-primary" style="width:100%;" onclick="go('quiz')">Practice this concept</button>
+      </div>
+    </section>
+
+    <!-- AI TUTOR -->
+    <section class="screen" id="tutor" style="padding:0;">
+      <div class="back-row"><button class="icon-btn" onclick="go('dashboard')">←</button><h3>AI Tutor</h3></div>
+      <div class="content-pad" id="chatScroll" style="flex:1; display:flex; flex-direction:column; padding-top:8px;"></div>
+      <div class="chat-input-row">
+        <input id="chatInput" type="text" placeholder="Ask about any math problem..." onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="send-btn" onclick="sendChat()"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg></button>
+      </div>
+    </section>
+
+    <!-- QUIZ -->
+    <section class="screen" id="quiz">
+      <div class="back-row"><button class="icon-btn" onclick="go('dashboard')">←</button><h3>Practice Mode</h3></div>
+      <div class="content-pad" style="padding-top:8px;">
+        <div class="quiz-progress"><i id="quizBar" style="width:10%;"></i></div>
+        <div class="eyebrow" id="quizCounter">Question 1 of 5</div>
+        <div class="quiz-q" id="quizQ"></div>
+        <div id="quizOpts"></div>
+      </div>
+    </section>
+
+    <!-- QUIZ RESULT -->
+    <section class="screen" id="quizResult">
+      <div class="content-pad" style="padding-top:60px; text-align:center;">
+        <div class="eyebrow" style="text-align:center;">Session complete</div>
+        <h2 style="font-size:38px; margin-bottom:6px;" id="resultScore">4/5</h2>
+        <p style="margin-bottom:24px;">Nice work &mdash; here's what the AI noticed.</p>
+        <div class="solution-block" style="text-align:left;">
+          <div class="eyebrow">AI Feedback</div>
+          <p id="aiFeedback">You're solid on setting up equations. Slow down on sign errors when distributing negatives &mdash; that's where most misses happened.</p>
+        </div>
+        <button class="btn-primary" style="width:100%; margin-top:10px;" onclick="go('progress')">See progress dashboard</button>
+      </div>
+    </section>
+
+    <!-- PROGRESS -->
+    <section class="screen" id="progress">
+      <div class="back-row"><button class="icon-btn" onclick="go('dashboard')">←</button><h3>Progress</h3></div>
+      <div class="content-pad" style="padding-top:8px;">
+        <div class="stat-row">
+          <div class="stat"><b>420</b><span>TOTAL XP</span></div>
+          <div class="stat"><b>84%</b><span>ACCURACY</span></div>
+          <div class="stat"><b>6</b><span>DAY STREAK</span></div>
+        </div>
+        <div class="coord-label">// weekly XP</div>
+        <svg viewBox="0 0 300 130" style="width:100%; margin-bottom:20px;">
+          <g id="barsG"></g>
+        </svg>
+        <div class="section-title"><h3>Badges</h3><span onclick="go('achievements')">View all &rarr;</span></div>
+        <div class="badge-grid" style="margin-bottom:20px;">
+          <div class="badge"><div class="glyph">π</div><span>PI STARTER</span></div>
+          <div class="badge"><div class="glyph">Σ</div><span>STREAK 5</span></div>
+          <div class="badge locked"><div class="glyph">∞</div><span>100 SOLVED</span></div>
+        </div>
+        <button class="link-row" onclick="go('teacher')">Teacher / parent dashboard <span>→</span></button>
+      </div>
+    </section>
+
+    <!-- ACHIEVEMENTS -->
+    <section class="screen" id="achievements">
+      <div class="back-row"><button class="icon-btn" onclick="go('progress')">←</button><h3>Achievements</h3></div>
+      <div class="content-pad" style="padding-top:8px;">
+        <div class="coord-label">// earned &amp; locked badges</div>
+        <div class="badge-grid" id="badgeGrid"></div>
+      </div>
+    </section>
+
+    <!-- PROFILE -->
+    <section class="screen" id="profile">
+      <div class="back-row"><button class="icon-btn" onclick="go('dashboard')">←</button><h3>Profile</h3></div>
+      <div class="content-pad" style="padding-top:8px;">
+        <div class="profile-card">
+          <div class="avatar" id="avatarInit">A</div>
+          <div><b id="profileName" style="font-size:16px;">Alex Rivera</b><br><small style="color:var(--text-faint); font-family:'JetBrains Mono',monospace;" id="profileEmail">alex@school.edu</small></div>
+        </div>
+        <button class="link-row" onclick="go('achievements')">Achievements <span>→</span></button>
+        <button class="link-row" onclick="go('progress')">Progress dashboard <span>→</span></button>
+        <button class="link-row" onclick="go('settings')">Settings <span>→</span></button>
+        <button class="link-row" onclick="go('teacher')">Teacher / parent view <span>→</span></button>
+        <button class="btn-primary" style="width:100%; margin-top:24px; background:var(--surface-2); color:var(--coral); border:1px solid var(--surface-3);" onclick="logout()">Log out</button>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="screen" id="settings">
+      <div class="back-row"><button class="icon-btn" onclick="go('profile')">←</button><h3>Settings</h3></div>
+      <div class="content-pad" style="padding-top:8px;">
+        <div class="toggle-row"><b>Sound effects</b><button class="switch on" id="soundSwitch" onclick="toggleSound()"><i></i></button></div>
+        <div class="toggle-row"><b>Push notifications</b><button class="switch on" id="notifSwitch" onclick="toggleGeneric(this)"><i></i></button></div>
+        <div class="toggle-row"><b>Daily reminder</b><button class="switch" id="reminderSwitch" onclick="toggleGeneric(this)"><i></i></button></div>
+        <div class="toggle-row" style="border-bottom:none;"><b>Show hints in quizzes</b><button class="switch on" id="hintSwitch" onclick="toggleGeneric(this)"><i></i></button></div>
+      </div>
+    </section>
+
+    <!-- TEACHER / PARENT DASHBOARD -->
+    <section class="screen" id="teacher">
+      <div class="back-row"><button class="icon-btn" onclick="go('progress')">←</button><h3>Teacher / Parent View</h3></div>
+      <div class="content-pad" style="padding-top:8px;">
+        <div class="coord-label">// class overview</div>
+        <div id="studentList"></div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav" id="bottomNav" style="display:none;">
+    <button class="nav-btn on" data-nav="dashboard" onclick="go('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10"/></svg>Home
+    </button>
+    <button class="nav-btn" data-nav="graph" onclick="go('graph')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21V3M3 21H21"/><circle cx="9" cy="13" r="1.4" fill="currentColor" stroke="none"/><circle cx="15" cy="7" r="1.4" fill="currentColor" stroke="none"/><path d="M9 13L15 7"/></svg>Graph
+    </button>
+    <button class="nav-btn" data-nav="tutor" onclick="go('tutor')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v11H8l-4 4z"/></svg>Tutor
+    </button>
+    <button class="nav-btn" data-nav="progress" onclick="go('progress')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20V10M12 20V4M20 20v-7"/></svg>Progress
+    </button>
+    <button class="nav-btn" data-nav="profile" onclick="go('profile')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c1.5-4.5 5-6 7-6s5.5 1.5 7 6"/></svg>Profile
+    </button>
+  </div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+/* ============ SOUND ENGINE (Web Audio, no assets needed) ============ */
+let audioCtx = null;
+let soundEnabled = true;
+function ctx(){ if(!audioCtx){ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); } if(audioCtx.state==='suspended') audioCtx.resume(); return audioCtx; }
+function tone(freq, start, dur, type='sine', peak=0.16){
+  if(!soundEnabled) return;
+  const c = ctx();
+  const osc = c.createOscillator();
+  const gain = c.createGain();
+  osc.type = type; osc.frequency.value = freq;
+  osc.connect(gain); gain.connect(c.destination);
+  const t0 = c.currentTime + start;
+  gain.gain.setValueAtTime(0, t0);
+  gain.gain.linearRampToValueAtTime(peak, t0 + 0.012);
+  gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+  osc.start(t0); osc.stop(t0 + dur + 0.02);
+}
+const S = {
+  click: ()=> tone(680, 0, 0.07, 'sine', 0.12),
+  nav:   ()=> { tone(520,0,0.06,'triangle',0.1); tone(720,0.03,0.07,'triangle',0.08); },
+  success: ()=> { tone(523,0,0.12,'sine',0.14); tone(659,0.08,0.14,'sine',0.14); tone(784,0.16,0.22,'sine',0.15); },
+  error: ()=> { tone(300,0,0.14,'sawtooth',0.09); tone(180,0.09,0.2,'sawtooth',0.09); },
+  achievement: ()=> { [523,659,784,1046].forEach((f,i)=> tone(f, i*0.09, 0.24, 'sine', 0.14)); },
+  pop: ()=> tone(900, 0, 0.05, 'sine', 0.1),
+  send: ()=> { tone(600,0,0.05,'sine',0.1); tone(850,0.05,0.06,'sine',0.09); }
+};
+function toggleSound(){
+  soundEnabled = !soundEnabled;
+  document.getElementById('soundSwitch').classList.toggle('on', soundEnabled);
+  if(soundEnabled) S.click();
+}
+function toggleGeneric(el){ el.classList.toggle('on'); S.click(); }
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(showToast._h);
+  showToast._h = setTimeout(()=> t.classList.remove('show'), 1800);
+}
+
+/* ============ NAV ============ */
+let current = 'splash';
+function go(name){
+  document.getElementById(current)?.classList.remove('active');
+  document.getElementById(name).classList.add('active');
+  current = name;
+  S.nav();
+  document.querySelectorAll('.nav-btn').forEach(b=> b.classList.toggle('on', b.dataset.nav===name));
+  const showNav = ['dashboard','graph','tutor','progress','profile'].includes(name);
+  document.getElementById('bottomNav').style.display = showNav ? 'flex' : 'none';
+}
+
+/* Splash -> onboarding */
+setTimeout(()=>{ go('onboarding'); }, 2200);
+
+/* Onboarding */
+let obIndex = 0;
+function obAdvance(){
+  S.click();
+  obIndex++;
+  if(obIndex > 2){ goAuth(); return; }
+  document.querySelectorAll('.ob-slide').forEach(s=> s.classList.toggle('active', +s.dataset.i===obIndex));
+  document.querySelectorAll('.ob-dots i').forEach((d,i)=> d.classList.toggle('on', i===obIndex));
+  document.getElementById('obNext').textContent = obIndex===2 ? "Let's go" : 'Continue';
+}
+function goAuth(){ S.nav(); go('auth'); }
+
+/* Auth */
+function setAuthTab(t){
+  S.click();
+  document.getElementById('tabLogin').classList.toggle('on', t==='login');
+  document.getElementById('tabRegister').classList.toggle('on', t==='register');
+  document.getElementById('registerFields').style.display = t==='register' ? 'block' : 'none';
+}
+let userName = 'Alex Rivera';
+function doAuth(){
+  const nameEl = document.getElementById('regName');
+  if(nameEl.value.trim()) userName = nameEl.value.trim();
+  const first = userName.split(' ')[0];
+  document.getElementById('dashName').textContent = first;
+  document.getElementById('profileName').textContent = userName;
+  document.getElementById('avatarInit').textContent = userName[0].toUpperCase();
+  const email = document.getElementById('authEmail').value || 'alex@school.edu';
+  document.getElementById('profileEmail').textContent = email;
+  S.success();
+  go('dashboard');
+  showToast('Welcome to MathPath ✓');
+}
+function logout(){ S.click(); go('auth'); }
+
+/* ============ LEARN VIDEOS ============ */
+const lessons = [
+  {t:'Linear Equations 101', d:'6:20', topic:'ALGEBRA', body:'A linear equation describes a straight-line relationship between two variables, written as y = mx + b. Here m is the slope — how steep the line is — and b is the y-intercept, where the line crosses the vertical axis. Once you can read m and b from an equation, you can sketch the line without plotting a single point.'},
+  {t:'Understanding Slope', d:'4:45', topic:'ALGEBRA', body:'Slope measures rise over run: how much y changes for every step x takes. A positive slope climbs left to right, a negative slope falls, and a slope of zero is a flat horizontal line. Steeper lines have larger slope values, whether positive or negative.'},
+  {t:'Solving for X', d:'7:10', topic:'ALGEBRA', body:'To isolate x, undo operations in reverse order using inverse operations — subtract before you divide, add before you multiply. Whatever you do to one side of the equation, you must do to the other to keep it balanced.'},
+  {t:'Intro to the Coordinate Plane', d:'5:02', topic:'GEOMETRY', body:'Every point on the plane is described by an ordered pair (x, y): how far to move horizontally, then vertically, from the origin. The two axes divide the plane into four quadrants, each with its own combination of positive and negative signs.'},
+  {t:'Pythagorean Theorem', d:'6:38', topic:'GEOMETRY', body:'In any right triangle, the square of the hypotenuse equals the sum of the squares of the other two sides: a² + b² = c². It only works for right triangles, and the hypotenuse is always the longest side, opposite the right angle.'},
+  {t:'Fractions to Decimals', d:'3:55', topic:'NUMBERS', body:'Dividing the numerator by the denominator converts any fraction into its decimal form. Some fractions terminate cleanly, like 1/4 = 0.25, while others repeat forever, like 1/3 = 0.333...'}
+];
+function renderLessons(){
+  const wrap = document.getElementById('lessonList');
+  wrap.innerHTML = lessons.map((l,i)=>`
+    <button class="row-item" onclick="openLesson(${i})">
+      <div class="ri-icon" style="background:rgba(94,234,212,0.12);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="#5eead4"><path d="M8 5v14l11-7z"/></svg>
+      </div>
+      <div class="ri-body"><b>${l.t}</b><small>${l.d} &middot; ${l.topic}</small></div>
+      <div class="chip" style="background:var(--surface-3); color:var(--text-dim);">▶</div>
+    </button>`).join('');
+}
+renderLessons();
+let activeLesson = 0;
+function openLesson(i){
+  activeLesson = i;
+  const l = lessons[i];
+  document.getElementById('lessonTitle').textContent = l.t;
+  document.getElementById('lessonBody').textContent = l.body;
+  document.getElementById('pbar').style.width='0%';
+  document.getElementById('pbar').style.transition='none';
+  playing = false;
+  document.getElementById('playIcon').innerHTML = '<path d="M8 5v14l11-7z"/>';
+  S.click();
+  go('lessonDetail');
+}
+let playing = false;
+function togglePlay(){
+  playing = !playing;
+  const bar = document.getElementById('pbar');
+  const icon = document.getElementById('playIcon');
+  if(playing){
+    S.pop();
+    icon.innerHTML = '<rect x="6" y="5" width="4" height="14"/><rect x="14" y="5" width="4" height="14"/>';
+    bar.style.transition = 'width 8s linear';
+    requestAnimationFrame(()=> bar.style.width = '100%');
+  } else {
+    S.click();
+    icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+    const cur = getComputedStyle(bar).width;
+    bar.style.transition = 'none';
+    bar.style.width = cur;
+  }
+}
+function completeLesson(){
+  S.success();
+  showToast('Lesson complete · +20 XP');
+  go('learn');
+}
+
+/* ============ HOMEWORK AI ============ */
+function startScan(){
+  const zone = document.getElementById('scanZone');
+  const label = document.getElementById('scanLabel');
+  const btn = document.getElementById('scanBtn');
+  zone.classList.add('scanning');
+  label.textContent = 'Scanning problem...';
+  btn.style.display='none';
+  S.pop();
+  document.getElementById('solutionArea').innerHTML = '';
+  setTimeout(()=>{
+    label.textContent = 'Problem recognized ✓';
+    S.success();
+    document.getElementById('solutionArea').innerHTML = `
+      <div class="solution-block">
+        <div class="eyebrow">Detected problem</div>
+        <p style="font-family:'JetBrains Mono',monospace; color:var(--text); font-size:14px;">3x + 7 = 22</p>
+      </div>
+      <div class="solution-block">
+        <div class="eyebrow">AI Solution</div>
+        <div class="step-line"><div class="step-num">1</div><span>3x + 7 = 22</span></div>
+        <div class="step-line"><div class="step-num">2</div><span>3x = 22 − 7 = 15</span></div>
+        <div class="step-line"><div class="step-num">3</div><span>x = 15 ÷ 3 = 5</span></div>
+      </div>
+      <div class="solution-block">
+        <div class="eyebrow">AI Explanation</div>
+        <p>Subtract 7 from both sides to isolate the term with x, then divide by its coefficient. Whatever you do to one side, you do to the other &mdash; that's what keeps the equation balanced.</p>
+      </div>
+      <button class="btn-primary" style="width:100%; margin-bottom:10px;" onclick="go('tutor')">Ask AI Tutor about this</button>
+      <button class="btn-sm" style="width:100%;" onclick="go('quiz')">Try a similar problem</button>
+    `;
+  }, 1600);
+}
+
+/* ============ GRAPH GRID ============ */
+const canvas = document.getElementById('graphCanvas');
+const gctx = canvas.getContext('2d');
+const GSIZE = 600, ORIGIN = GSIZE/2, SCALE = 24;
+let points = [];
+function drawGraph(){
+  gctx.clearRect(0,0,GSIZE,GSIZE);
+  gctx.fillStyle = '#1b2540'; gctx.fillRect(0,0,GSIZE,GSIZE);
+  gctx.strokeStyle = 'rgba(94,234,212,0.08)'; gctx.lineWidth = 1;
+  for(let x=0;x<=GSIZE;x+=SCALE){ gctx.beginPath(); gctx.moveTo(x,0); gctx.lineTo(x,GSIZE); gctx.stroke(); }
+  for(let y=0;y<=GSIZE;y+=SCALE){ gctx.beginPath(); gctx.moveTo(0,y); gctx.lineTo(GSIZE,y); gctx.stroke(); }
+  gctx.strokeStyle = 'rgba(94,234,212,0.4)'; gctx.lineWidth = 1.5;
+  gctx.beginPath(); gctx.moveTo(0,ORIGIN); gctx.lineTo(GSIZE,ORIGIN); gctx.stroke();
+  gctx.beginPath(); gctx.moveTo(ORIGIN,0); gctx.lineTo(ORIGIN,GSIZE); gctx.stroke();
+  points.forEach(p=>{
+    gctx.fillStyle = '#fbbf24';
+    gctx.beginPath(); gctx.arc(ORIGIN + p.x*SCALE, ORIGIN - p.y*SCALE, 5, 0, Math.PI*2); gctx.fill();
+  });
+  if(currentLine){
+    gctx.strokeStyle = '#5eead4'; gctx.lineWidth = 2.5;
+    gctx.beginPath();
+    const x1=-ORIGIN/SCALE, x2=ORIGIN/SCALE;
+    gctx.moveTo(ORIGIN + x1*SCALE, ORIGIN - (currentLine.m*x1+currentLine.b)*SCALE);
+    gctx.lineTo(ORIGIN + x2*SCALE, ORIGIN - (currentLine.m*x2+currentLine.b)*SCALE);
+    gctx.stroke();
+  }
+}
+let currentLine = {m:0.5, b:1};
+function handleGraphTap(clientX, clientY){
+  const rect = canvas.getBoundingClientRect();
+  const px = (clientX - rect.left) * (GSIZE/rect.width);
+  const py = (clientY - rect.top) * (GSIZE/rect.height);
+  const gx = Math.round((px - ORIGIN)/SCALE);
+  const gy = Math.round((ORIGIN - py)/SCALE);
+  points.push({x:gx,y:gy});
+  document.getElementById('coordReadout').textContent = `Plotted point (${gx}, ${gy})`;
+  S.pop();
+  drawGraph();
+}
+canvas.addEventListener('pointerdown', (e)=> handleGraphTap(e.clientX, e.clientY));
+function drawFunction(){
+  const val = document.getElementById('funcInput').value.replace(/\s/g,'').toLowerCase();
+  const match = val.match(/y=([\-\d.]*)x([+\-]\d+\.?\d*)?/);
+  if(match){
+    const m = match[1]==='' || match[1]==='-'? (match[1]==='-'?-1:1) : parseFloat(match[1]);
+    const b = match[2] ? parseFloat(match[2]) : 0;
+    currentLine = {m,b};
+    document.getElementById('coordReadout').textContent = `Plotted y = ${m}x ${b>=0?'+':''}${b}`;
+    S.success();
+  } else {
+    document.getElementById('coordReadout').textContent = 'Try a format like: y = 0.5x + 1';
+    S.error();
+  }
+  drawGraph();
+}
+function clearGraph(){ points = []; currentLine = null; S.click(); drawGraph(); document.getElementById('coordReadout').textContent = 'Tap the grid to plot a point'; }
+drawGraph();
+
+/* ============ AI TUTOR CHAT ============ */
+const chatLog = [
+  {who:'ai', text:"Hey! I'm your AI tutor. Ask me about anything you're working on — an equation, a concept, or homework you got stuck on."}
+];
+function renderChat(){
+  const wrap = document.getElementById('chatScroll');
+  wrap.innerHTML = chatLog.map(m=> `<div class="bubble ${m.who==='me'?'me':'ai'}">${m.text}</div>`).join('');
+  wrap.scrollTop = wrap.scrollHeight;
+}
+renderChat();
+const canned = [
+  {k:/slope/, r:"Slope is rise over run — how much y changes for each step x takes. For y = mx + b, m is the slope. A bigger |m| means a steeper line."},
+  {k:/quadratic|parabola/, r:"A quadratic is any equation shaped like ax² + bx + c = 0. Its graph is a U-shaped parabola, and you can solve it with factoring, completing the square, or the quadratic formula."},
+  {k:/fraction/, r:"To add fractions, first get a common denominator, then add the numerators and keep the denominator. To multiply, just multiply straight across — numerators together, denominators together."},
+  {k:/graph|plot/, r:"Head over to the Graph Grid tab — you can tap to plot points or type an equation like y = 2x - 1 and I'll draw it for you live."},
+  {k:/pythagor/, r:"a² + b² = c² — it only applies to right triangles, where c is the hypotenuse, the side opposite the right angle."}
+];
+function aiReply(userText){
+  const hit = canned.find(c=> c.k.test(userText.toLowerCase()));
+  return hit ? hit.r : "Good question. Break it into smaller steps: what do you know, and what are you solving for? Try writing the equation out and I'll walk through it with you.";
+}
+function sendChat(){
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if(!text) return;
+  chatLog.push({who:'me', text});
+  renderChat();
+  input.value = '';
+  S.send();
+  const wrap = document.getElementById('chatScroll');
+  const typingEl = document.createElement('div');
+  typingEl.className = 'typing';
+  typingEl.innerHTML = '<i></i><i></i><i></i>';
+  wrap.appendChild(typingEl);
+  wrap.scrollTop = wrap.scrollHeight;
+  setTimeout(()=>{
+    typingEl.remove();
+    chatLog.push({who:'ai', text: aiReply(text)});
+    renderChat();
+    S.pop();
+  }, 1000 + Math.random()*500);
+}
+
+/* ============ QUIZ ============ */
+const quizData = [
+  {q:'Solve for x: 2x + 5 = 17', opts:['x = 6','x = 5','x = 11','x = 7'], a:0},
+  {q:'What is the slope of y = -3x + 4?', opts:['4','3','-3','-4'], a:2},
+  {q:'Which point lies in Quadrant III?', opts:['(2, 3)','(-2, 3)','(-2, -3)','(2, -3)'], a:2},
+  {q:'Simplify: 1/2 + 1/4', opts:['2/6','3/4','1/6','2/4'], a:1},
+  {q:'In a right triangle, legs 3 and 4 — find the hypotenuse.', opts:['5','6','7','12'], a:0}
+];
+let qIndex = 0, qScore = 0;
+function startQuiz(){ qIndex=0; qScore=0; renderQuiz(); }
+function renderQuiz(){
+  const q = quizData[qIndex];
+  document.getElementById('quizCounter').textContent = `Question ${qIndex+1} of ${quizData.length}`;
+  document.getElementById('quizBar').style.width = `${((qIndex)/quizData.length)*100+10}%`;
+  document.getElementById('quizQ').textContent = q.q;
+  document.getElementById('quizOpts').innerHTML = q.opts.map((o,i)=> `<button class="opt" onclick="answerQuiz(${i})">${o}</button>`).join('');
+}
+function answerQuiz(i){
+  const q = quizData[qIndex];
+  const opts = document.querySelectorAll('.opt');
+  opts.forEach(o=> o.onclick = null);
+  if(i===q.a){ opts[i].classList.add('correct'); qScore++; S.success(); }
+  else { opts[i].classList.add('wrong'); opts[q.a].classList.add('correct'); S.error(); }
+  setTimeout(()=>{
+    qIndex++;
+    if(qIndex < quizData.length) renderQuiz();
+    else finishQuiz();
+  }, 900);
+}
+function finishQuiz(){
+  document.getElementById('resultScore').textContent = `${qScore}/${quizData.length}`;
+  S.achievement();
+  go('quizResult');
+}
+const origGo = go;
+go = function(name){ if(name==='quiz') startQuiz(); origGo(name); };
+
+/* ============ PROGRESS CHART ============ */
+function renderChart(){
+  const data = [40,65,50,80,60,95,70];
+  const g = document.getElementById('barsG');
+  const w = 300, h = 110, gap=8, bw=(w/data.length)-gap;
+  g.innerHTML = data.map((v,i)=>{
+    const bh = (v/100)*h;
+    const x = i*(bw+gap);
+    const y = h-bh;
+    const color = i===5 ? '#5eead4' : '#232f52';
+    return `<rect x="${x}" y="${y+15}" width="${bw}" height="${bh}" rx="4" fill="${color}"/>`;
+  }).join('');
+}
+renderChart();
+
+/* ============ ACHIEVEMENTS ============ */
+const badges = [
+  {g:'π', n:'PI STARTER', locked:false}, {g:'Σ', n:'STREAK 5', locked:false},
+  {g:'√', n:'FIRST SCAN', locked:false}, {g:'Δ', n:'GRAPH PRO', locked:false},
+  {g:'∞', n:'100 SOLVED', locked:true}, {g:'θ', n:'GEOMETRY ACE', locked:true},
+  {g:'∑', n:'STREAK 30', locked:true}, {g:'λ', n:'PERFECT QUIZ', locked:false},
+  {g:'∂', n:'ADVANCED', locked:true}
+];
+document.getElementById('badgeGrid').innerHTML = badges.map(b=> `
+  <div class="badge ${b.locked?'locked':''}"><div class="glyph">${b.g}</div><span>${b.n}</span></div>
+`).join('');
+
+/* ============ TEACHER DASHBOARD ============ */
+const students = [
+  {n:'Alex R.', p:84, x:420}, {n:'Jordan M.', p:62, x:310}, {n:'Sam T.', p:95, x:510},
+  {n:'Riley P.', p:48, x:210}, {n:'Casey L.', p:73, x:365}
+];
+document.getElementById('studentList').innerHTML = students.map(s=> `
+  <div class="student-row">
+    <div class="avatar" style="width:36px; height:36px; font-size:13px; border-radius:10px;">${s.n[0]}</div>
+    <div style="flex:1;">
+      <b style="font-size:13px; display:block; margin-bottom:5px;">${s.n}</b>
+      <div class="mini-bar"><i style="width:${s.p}%;"></i></div>
+    </div>
+    <small style="font-family:'JetBrains Mono',monospace; color:var(--text-faint); font-size:11px;">${s.x} XP</small>
+  </div>
+`).join('');
+
+/* ============ CLOCK ============ */
+function updateClock(){
+  const d = new Date();
+  let h = d.getHours()%12; if(h===0) h=12;
+  const m = d.getMinutes().toString().padStart(2,'0');
+  document.getElementById('clock').textContent = `${h}:${m}`;
+}
+updateClock(); setInterval(updateClock, 30000);
+
+/* unlock audio context on first tap anywhere */
+document.addEventListener('pointerdown', ()=>{ if(!audioCtx) ctx(); }, {once:true});
+</script>
+</body>
+</html>
